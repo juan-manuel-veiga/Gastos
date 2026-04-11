@@ -41,14 +41,15 @@ const salariesCol = () => collection(db, 'salaries')
 /** Write (create or overwrite) a single expense */
 export async function fsSetExpense(expense: Expense): Promise<void> {
   const { id, ...rest } = expense
-  const cleanData = Object.fromEntries(
-  Object.entries({
-    ...rest,
-    updatedAt: serverTimestamp(),
-  }).filter(([_, v]) => v !== undefined)
-)
 
-await setDoc(doc(expensesCol(), id), cleanData)
+  const cleanData = Object.fromEntries(
+    Object.entries(rest).filter(([_, v]) => v !== undefined)
+  )
+
+  await setDoc(doc(expensesCol(), id), {
+    ...cleanData,
+    updatedAt: serverTimestamp(),
+  })
 }
 
 /** Delete a single expense */
