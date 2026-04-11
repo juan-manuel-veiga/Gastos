@@ -1,7 +1,7 @@
 {
   "name": "expense-tracker",
   "private": true,
-  "version": "1.0.0",
+  "version": "2.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "date-fns": "^3.6.0",
+    "firebase": "^10.12.2",
     "lucide-react": "^0.395.0",
     "recharts": "^2.12.7",
     "zustand": "^4.5.4",
