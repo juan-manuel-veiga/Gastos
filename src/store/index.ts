@@ -54,24 +54,27 @@ export const useStore = create<ExpenseStore>()(
 
       setActiveMonth: (month) => set({ activeMonth: month }),
 
-      addExpense: (expense) => {
-        const newExpense: Expense = { ...expense, id: generateId() }
-        set((state) => ({ expenses: [newExpense, ...state.expenses] }))
-        fsSetExpense(newExpense).catch(console.error)
-      },
+      addExpense: async (expense) => {
+  const newExpense: Expense = { ...expense, id: generateId() }
 
-      updateExpense: (id, expense) => {
-        const updated: Expense = { ...expense, id }
-        set((state) => ({
-          expenses: state.expenses.map((e) => e.id === id ? updated : e),
-        }))
-        fsSetExpense(updated).catch(console.error)
-      },
+  console.log("ENVIANDO A FIREBASE:", newExpense) 
 
-      deleteExpense: (id) => {
-        set((state) => ({ expenses: state.expenses.filter((e) => e.id !== id) }))
-        fsDeleteExpense(id).catch(console.error)
-      },
+  try {
+    await fsSetExpense(newExpense)
+    console.log("✅ guardado")
+  } catch (e) {
+    console.error("❌ error firebase:", e)
+  }
+},
+
+      updateExpense: async (id, expense) => {
+  const updated: Expense = { ...expense, id }
+  await fsSetExpense(updated)
+},
+
+      deleteExpense: async (id) => {
+  await fsDeleteExpense(id)
+},
 
       toggleTheme: () =>
         set((state) => ({ theme: state.theme === 'dark' ? 'light' : 'dark' })),
