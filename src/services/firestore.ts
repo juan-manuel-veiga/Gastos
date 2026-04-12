@@ -42,12 +42,19 @@ const salariesCol = () => collection(db, 'salaries')
 export async function fsSetExpense(expense: Expense): Promise<void> {
   const { id, ...rest } = expense
 
-  const cleanData = Object.fromEntries(
-    Object.entries({
-      ...rest,
-      updatedAt: serverTimestamp(),
-    }).filter(([_, v]) => v !== undefined && v !== false)
-  )
+  // 🔥 limpieza REAL campo por campo
+  const cleanData: Record<string, any> = {}
+
+  for (const key in rest) {
+    const value = rest[key as keyof typeof rest]
+
+    if (value !== undefined) {
+      cleanData[key] = value
+    }
+  }
+
+  // agregar timestamp después
+  cleanData.updatedAt = serverTimestamp()
 
   await setDoc(doc(expensesCol(), id), cleanData)
 }
