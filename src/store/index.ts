@@ -55,21 +55,28 @@ export const useStore = create<ExpenseStore>()(
       setActiveMonth: (month) => set({ activeMonth: month }),
 
       addExpense: async (expense) => {
-  const newExpense: Expense = { ...expense, id: generateId() }
+  const newExpense: any = { ...expense, id: generateId() }
 
-  console.log("ENVIANDO A FIREBASE:", newExpense) 
+  Object.keys(newExpense).forEach((key) => {
+    if (newExpense[key] === undefined) {
+      delete newExpense[key]
+    }
+  })
 
-  try {
-    await fsSetExpense(newExpense)
-    console.log("✅ guardado")
-  } catch (e) {
-    console.error("❌ error firebase:", e)
-  }
+  await fsSetExpense(newExpense)
 },
 
       updateExpense: async (id, expense) => {
-  const updated: Expense = { ...expense, id }
-  await fsSetExpense(updated)
+  const cleanExpense: any = { ...expense, id }
+
+  // 🔥 eliminar undefined explícitamente
+  Object.keys(cleanExpense).forEach((key) => {
+    if (cleanExpense[key] === undefined) {
+      delete cleanExpense[key]
+    }
+  })
+
+  await fsSetExpense(cleanExpense)
 },
 
       deleteExpense: async (id) => {
