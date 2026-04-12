@@ -32,11 +32,13 @@ import type { Expense } from '@/types/expense'
 const expensesCol = () => collection(db, 'expenses')
 const salariesCol = () => collection(db, 'salaries')
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+// ─── Strip undefined ──────────────────────────────────────────────────────────
+// Firestore throws a hard error if any field value is `undefined`.
+// JSON round-trip is the simplest way to remove ALL undefined values
+// recursively, regardless of how deeply they are nested.
 
-/** Strip undefined fields — Firestore rejects them */
-function clean(obj: Record<string, unknown>): Record<string, unknown> {
-  return Object.fromEntries(Object.entries(obj).filter(([, v]) => v !== undefined))
+function stripUndefined<T>(obj: T): T {
+  return JSON.parse(JSON.stringify(obj)) as T
 }
 
 // ─── Expenses ─────────────────────────────────────────────────────────────────
@@ -44,7 +46,7 @@ function clean(obj: Record<string, unknown>): Record<string, unknown> {
 export async function fsSetExpense(expense: Expense): Promise<void> {
   const { id, ...rest } = expense
   await setDoc(doc(expensesCol(), id), {
-    ...clean(rest as Record<string, unknown>),
+    ...stripUndefined(rest),
     updatedAt: serverTimestamp(),
   })
 }
@@ -60,7 +62,7 @@ export async function fsBatchSetExpenses(expenses: Expense[]): Promise<void> {
     expenses.slice(i, i + CHUNK).forEach((expense) => {
       const { id, ...rest } = expense
       batch.set(doc(expensesCol(), id), {
-        ...clean(rest as Record<string, unknown>),
+        ...stripUndefined(rest),
         updatedAt: serverTimestamp(),
       })
     })
