@@ -47,30 +47,39 @@ export function AddExpenseModal({ isOpen, onClose, expense }: AddExpenseModalPro
     }
   }, [isOpen, expense])
 
-  const handleSubmit = () => {
-    if (!form.title.trim()) return setError('El título es requerido')
-    const rawAmount = parseFloat(form.amount)
-    if (!rawAmount || rawAmount <= 0) return setError('Ingresá un monto válido')
+  const handleSubmit = async () => {
+  if (!form.title.trim()) return setError('El título es requerido')
 
-    const storedAmount   = form.isShared ? rawAmount / 2 : rawAmount
-    const originalAmount = form.isShared ? rawAmount : undefined
+  const rawAmount = parseFloat(form.amount)
+  if (!rawAmount || rawAmount <= 0) return setError('Ingresá un monto válido')
 
-    const data: Omit<Expense, 'id'> = {
-      title:          form.title.trim(),
-      amount:         storedAmount,
-      originalAmount,
-      isShared:       form.isShared || undefined,
-      category:       form.category,
-      date:           form.date,
-    }
+  const storedAmount   = form.isShared ? rawAmount / 2 : rawAmount
+  const originalAmount = form.isShared ? rawAmount : undefined
 
-    if (isEditing && expense) {
-      updateExpense(expense.id, data)
-    } else {
-      addExpense(data)
-    }
-    onClose()
+  const data: Omit<Expense, 'id'> = {
+    title: form.title.trim(),
+    amount: storedAmount,
+    originalAmount,
+    isShared: form.isShared || undefined,
+    category: form.category,
+    date: form.date,
   }
+
+  try {
+    if (isEditing && expense) {
+      await updateExpense(expense.id, data)
+    } else {
+      await addExpense(data)
+    }
+
+    console.log("✅ guardado OK en Firebase")
+
+    onClose()
+  } catch (e) {
+    console.error("❌ error al guardar:", e)
+    setError("Error guardando el gasto")
+  }
+}
 
   const rawAmount   = parseFloat(form.amount) || 0
   const halfAmount  = rawAmount / 2
