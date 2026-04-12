@@ -43,13 +43,13 @@ export async function fsSetExpense(expense: Expense): Promise<void> {
   const { id, ...rest } = expense
 
   const cleanData = Object.fromEntries(
-    Object.entries(rest).filter(([_, v]) => v !== undefined)
+    Object.entries({
+      ...rest,
+      updatedAt: serverTimestamp(),
+    }).filter(([_, v]) => v !== undefined && v !== false)
   )
 
-  await setDoc(doc(expensesCol(), id), {
-    ...cleanData,
-    updatedAt: serverTimestamp(),
-  })
+  await setDoc(doc(expensesCol(), id), cleanData)
 }
 
 /** Delete a single expense */
