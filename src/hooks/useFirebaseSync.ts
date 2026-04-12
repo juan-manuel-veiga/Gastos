@@ -1,11 +1,12 @@
 /**
  * useFirebaseSync
  *
- * Mounts real-time Firestore listeners on app start.
- * When Firestore emits a snapshot, the Zustand store is updated.
+ * Subscribes to Firestore real-time updates and syncs them into Zustand.
  *
- * This hook is the ONLY place that reads from Firestore in real-time.
- * All writes go through the store actions (which call firestore.ts directly).
+ * Key fix: we use `snapshot.metadata.hasPendingWrites` to skip snapshots
+ * that are local echoes of our own writes. We only apply remote data when
+ * the snapshot comes from the server (hasPendingWrites === false), which
+ * prevents the listener from reverting optimistic local updates.
  */
 
 import { useEffect, useState } from 'react'
@@ -27,7 +28,9 @@ export function useFirebaseSync() {
     }
 
     const unsubExpenses = fsSubscribeExpenses(
-      (expenses) => {
+      (expenses, hasPendingWrites) => {
+        // Skip the local echo — only update Zustand when the server confirms
+        if (hasPendingWrites) return
         setExpenses(expenses)
         expensesReady = true
         checkReady()
@@ -36,7 +39,8 @@ export function useFirebaseSync() {
     )
 
     const unsubSalaries = fsSubscribeSalaries(
-      (salaries) => {
+      (salaries, hasPendingWrites) => {
+        if (hasPendingWrites) return
         setSalariesBulk(salaries)
         salariesReady = true
         checkReady()
