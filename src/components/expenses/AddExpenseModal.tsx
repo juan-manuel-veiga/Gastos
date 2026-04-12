@@ -57,13 +57,16 @@ export function AddExpenseModal({ isOpen, onClose, expense }: AddExpenseModalPro
   const originalAmount = form.isShared ? rawAmount : undefined
 
   const data: Omit<Expense, 'id'> = {
-    title: form.title.trim(),
-    amount: storedAmount,
-    originalAmount,
-    isShared: form.isShared || undefined,
-    category: form.category,
-    date: form.date,
-  }
+  title: form.title.trim(),
+  amount: storedAmount,
+  category: form.category,
+  date: form.date,
+
+  ...(form.isShared && {
+    isShared: true,
+    originalAmount: rawAmount,
+  }),
+}
 
   try {
     if (isEditing && expense) {
