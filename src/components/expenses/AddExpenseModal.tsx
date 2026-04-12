@@ -14,10 +14,10 @@ interface AddExpenseModalProps {
 }
 
 const DEFAULT_FORM = {
-  title: '',
-  amount: '',
+  title:    '',
+  amount:   '',
   category: 'Otros' as Category,
-  date: format(new Date(), 'yyyy-MM-dd'),
+  date:     format(new Date(), 'yyyy-MM-dd'),
   isShared: false,
 }
 
@@ -33,8 +33,9 @@ export function AddExpenseModal({ isOpen, onClose, expense }: AddExpenseModalPro
       if (expense) {
         setForm({
           title:    expense.title,
-          // Show originalAmount in the field when editing a shared expense
-          amount:   String(expense.isShared ? (expense.originalAmount ?? expense.amount * 2) : expense.amount),
+          amount:   String(expense.isShared
+            ? (expense.originalAmount ?? expense.amount * 2)
+            : expense.amount),
           category: expense.category,
           date:     expense.date,
           isShared: expense.isShared ?? false,
@@ -52,16 +53,19 @@ export function AddExpenseModal({ isOpen, onClose, expense }: AddExpenseModalPro
     const rawAmount = parseFloat(form.amount)
     if (!rawAmount || rawAmount <= 0) return setError('Ingresá un monto válido')
 
-    const storedAmount   = form.isShared ? rawAmount / 2 : rawAmount
-    const originalAmount = form.isShared ? rawAmount : undefined
+    const storedAmount = form.isShared ? rawAmount / 2 : rawAmount
 
+    // Build the data object — never include undefined values.
+    // Optional fields are only added when they have a real value.
     const data: Omit<Expense, 'id'> = {
-      title:          form.title.trim(),
-      amount:         storedAmount,
-      originalAmount,
-      isShared:       form.isShared || undefined,
-      category:       form.category,
-      date:           form.date,
+      title:    form.title.trim(),
+      amount:   storedAmount,
+      category: form.category,
+      date:     form.date,
+      ...(form.isShared && {
+        isShared:       true,
+        originalAmount: rawAmount,
+      }),
     }
 
     if (isEditing && expense) {
@@ -72,8 +76,8 @@ export function AddExpenseModal({ isOpen, onClose, expense }: AddExpenseModalPro
     onClose()
   }
 
-  const rawAmount   = parseFloat(form.amount) || 0
-  const halfAmount  = rawAmount / 2
+  const rawAmount  = parseFloat(form.amount) || 0
+  const halfAmount = rawAmount / 2
 
   const field =
     'w-full bg-surface-3 border border-white/8 rounded-xl px-4 py-2.5 text-sm text-ink-100 placeholder:text-ink-600 focus:outline-none focus:border-accent-lime/50 focus:ring-1 focus:ring-accent-lime/20 transition-all'
@@ -111,7 +115,6 @@ export function AddExpenseModal({ isOpen, onClose, expense }: AddExpenseModalPro
             onKeyDown={(e) => e.key === 'Enter' && handleSubmit()}
             className={`${field} font-numbers`}
           />
-          {/* Live split preview */}
           {form.isShared && rawAmount > 0 && (
             <p className="text-xs text-ink-500 mt-1.5 flex items-center gap-1.5">
               <Users size={11} />
@@ -142,7 +145,6 @@ export function AddExpenseModal({ isOpen, onClose, expense }: AddExpenseModalPro
               <p className="text-xs text-ink-600">Dividir por 2 — solo se guarda tu mitad</p>
             </div>
           </div>
-          {/* Toggle pill */}
           <div
             className={`relative w-9 h-5 rounded-full transition-colors flex-shrink-0 ${
               form.isShared ? 'bg-accent-sky' : 'bg-surface-4'
