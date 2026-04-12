@@ -54,7 +54,7 @@ export function AddExpenseModal({ isOpen, onClose, expense }: AddExpenseModalPro
   if (!rawAmount || rawAmount <= 0) return setError('Ingresá un monto válido')
 
   const storedAmount   = form.isShared ? rawAmount / 2 : rawAmount
-  const originalAmount = form.isShared ? rawAmount : undefined
+  
 
   const data: Omit<Expense, 'id'> = {
   title: form.title.trim(),
@@ -62,10 +62,12 @@ export function AddExpenseModal({ isOpen, onClose, expense }: AddExpenseModalPro
   category: form.category,
   date: form.date,
 
-  ...(form.isShared && {
-    isShared: true,
-    originalAmount: rawAmount,
-  }),
+  ...(form.isShared
+    ? {
+        isShared: true,
+        originalAmount: rawAmount,
+      }
+    : {}),
 }
 
   try {
