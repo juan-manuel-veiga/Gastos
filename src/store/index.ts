@@ -17,10 +17,10 @@ function currentMonthStr(): string {
 }
 
 interface ExpenseStore {
-  salaries: Record<string, number>
-  expenses: Expense[]
+  salaries:    Record<string, number>
+  expenses:    Expense[]
   activeMonth: string
-  theme: 'dark' | 'light'
+  theme:       'dark' | 'light'
 
   getSalary:      (month: string) => number
   setSalary:      (month: string, salary: number) => void
@@ -30,10 +30,9 @@ interface ExpenseStore {
   deleteExpense:  (id: string) => void
   toggleTheme:    () => void
 
-  // ── Bulk setters used by the real-time Firebase listener ──────────────────
-  /** Replace entire expenses array (called on every Firestore snapshot) */
+  /** Replace entire expenses array — called only by the Firestore listener */
   setExpenses:     (expenses: Expense[]) => void
-  /** Replace entire salaries map (called on every Firestore snapshot) */
+  /** Replace entire salaries map — called only by the Firestore listener */
   setSalariesBulk: (salaries: Record<string, number>) => void
 }
 
@@ -48,53 +47,49 @@ export const useStore = create<ExpenseStore>()(
       getSalary: (month) => get().salaries[month] ?? 0,
 
       setSalary: (month, salary) => {
+        // 1. Update locally immediately
         set((state) => ({ salaries: { ...state.salaries, [month]: salary } }))
+        // 2. Persist to Firestore
         fsSetSalary(month, salary).catch(console.error)
       },
 
       setActiveMonth: (month) => set({ activeMonth: month }),
 
-      addExpense: async (expense) => {
-  const newExpense: any = { ...expense, id: generateId() }
+      addExpense: (expense) => {
+        const newExpense: Expense = { ...expense, id: generateId() }
+        // 1. Update locally immediately (optimistic)
+        set((state) => ({ expenses: [newExpense, ...state.expenses] }))
+        // 2. Persist to Firestore
+        fsSetExpense(newExpense).catch(console.error)
+      },
 
-  Object.keys(newExpense).forEach((key) => {
-    if (newExpense[key] === undefined) {
-      delete newExpense[key]
-    }
-  })
+      updateExpense: (id, expense) => {
+        const updated: Expense = { ...expense, id }
+        // 1. Update locally immediately (optimistic)
+        set((state) => ({
+          expenses: state.expenses.map((e) => e.id === id ? updated : e),
+        }))
+        // 2. Persist to Firestore
+        fsSetExpense(updated).catch(console.error)
+      },
 
-  await fsSetExpense(newExpense)
-},
-
-      updateExpense: async (id, expense) => {
-  const cleanExpense: any = { ...expense, id }
-
-  // 🔥 eliminar undefined explícitamente
-  Object.keys(cleanExpense).forEach((key) => {
-    if (cleanExpense[key] === undefined) {
-      delete cleanExpense[key]
-    }
-  })
-
-  await fsSetExpense(cleanExpense)
-},
-
-      deleteExpense: async (id) => {
-  await fsDeleteExpense(id)
-},
+      deleteExpense: (id) => {
+        // 1. Remove locally immediately (optimistic)
+        set((state) => ({ expenses: state.expenses.filter((e) => e.id !== id) }))
+        // 2. Delete from Firestore
+        fsDeleteExpense(id).catch(console.error)
+      },
 
       toggleTheme: () =>
         set((state) => ({ theme: state.theme === 'dark' ? 'light' : 'dark' })),
 
-      // ── Bulk setters (Firebase → UI, no write-back) ──────────────────────
-
-      setExpenses: (expenses) => set({ expenses }),
-
+      // ── Bulk setters (Firestore → Zustand, no write-back) ─────────────────
+      setExpenses:     (expenses) => set({ expenses }),
       setSalariesBulk: (salaries) => set({ salaries }),
     }),
     {
       name: 'expense-tracker-storage',
-      // Persist only UI preferences — data comes from Firestore
+      // Only persist UI preferences. All data comes from Firestore.
       partialize: (state) => ({
         activeMonth: state.activeMonth,
         theme:       state.theme,
@@ -106,7 +101,7 @@ export const useStore = create<ExpenseStore>()(
   )
 )
 
-// ─── Selectors (unchanged) ────────────────────────────────────────────────────
+// ─── Selectors ────────────────────────────────────────────────────────────────
 
 export const selectMonthExpenses = (expenses: Expense[], month: string): Expense[] =>
   expenses.filter((e) => e.date.startsWith(month))
@@ -116,7 +111,10 @@ export const selectTotalSpent = (expenses: Expense[]): number =>
 
 export const selectByCategory = (expenses: Expense[]): Record<string, number> =>
   expenses.reduce(
-    (acc, e) => { acc[e.category] = (acc[e.category] || 0) + e.amount; return acc },
+    (acc, e) => {
+      acc[e.category] = (acc[e.category] || 0) + e.amount
+      return acc
+    },
     {} as Record<string, number>
   )
 
@@ -133,12 +131,16 @@ export function selectAccumulatedSavings(
 
   let cumulative = 0
   return sorted.map((month) => {
-    const salary = salaries[month] ?? 0
-    const spent  = expenses.filter((e) => e.date.startsWith(month)).reduce((s, e) => s + e.amount, 0)
+    const salary  = salaries[month] ?? 0
+    const spent   = expenses
+      .filter((e) => e.date.startsWith(month))
+      .reduce((s, e) => s + e.amount, 0)
     const savings = salary - spent
-    cumulative += savings
-    const [y, m] = month.split('-')
-    const label = new Date(Number(y), Number(m) - 1, 1).toLocaleString('es-UY', { month: 'short', year: '2-digit' })
+    cumulative   += savings
+    const [y, m]  = month.split('-')
+    const label   = new Date(Number(y), Number(m) - 1, 1).toLocaleString('es-UY', {
+      month: 'short', year: '2-digit',
+    })
     return { month, label, savings, cumulative }
   })
 }

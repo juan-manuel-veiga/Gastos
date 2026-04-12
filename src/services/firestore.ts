@@ -7,8 +7,8 @@
  * Collection: "salaries"   — one doc per month, id = "yyyy-MM"
  *
  * The onSnapshot callbacks receive a second argument `hasPendingWrites`.
- * Callers use this flag to skip local-echo snapshots and avoid overwriting
- * optimistic updates before the server has confirmed them.
+ * Callers skip local-echo snapshots (hasPendingWrites === true) to avoid
+ * overwriting optimistic updates before the server confirms them.
  */
 
 import {
@@ -32,16 +32,19 @@ import type { Expense } from '@/types/expense'
 const expensesCol = () => collection(db, 'expenses')
 const salariesCol = () => collection(db, 'salaries')
 
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+/** Strip undefined fields — Firestore rejects them */
+function clean(obj: Record<string, unknown>): Record<string, unknown> {
+  return Object.fromEntries(Object.entries(obj).filter(([, v]) => v !== undefined))
+}
+
 // ─── Expenses ─────────────────────────────────────────────────────────────────
 
 export async function fsSetExpense(expense: Expense): Promise<void> {
   const { id, ...rest } = expense
-  // Remove undefined fields — Firestore rejects them
-  const clean = Object.fromEntries(
-    Object.entries(rest).filter(([, v]) => v !== undefined)
-  )
   await setDoc(doc(expensesCol(), id), {
-    ...clean,
+    ...clean(rest as Record<string, unknown>),
     updatedAt: serverTimestamp(),
   })
 }
@@ -56,10 +59,10 @@ export async function fsBatchSetExpenses(expenses: Expense[]): Promise<void> {
     const batch = writeBatch(db)
     expenses.slice(i, i + CHUNK).forEach((expense) => {
       const { id, ...rest } = expense
-      const clean = Object.fromEntries(
-        Object.entries(rest).filter(([, v]) => v !== undefined)
-      )
-      batch.set(doc(expensesCol(), id), { ...clean, updatedAt: serverTimestamp() })
+      batch.set(doc(expensesCol(), id), {
+        ...clean(rest as Record<string, unknown>),
+        updatedAt: serverTimestamp(),
+      })
     })
     await batch.commit()
   }
@@ -72,9 +75,8 @@ export async function fsGetAllExpenses(): Promise<Expense[]> {
 
 /**
  * Real-time subscription.
- * onData receives the expense list AND a hasPendingWrites flag.
- * When hasPendingWrites is true the snapshot is a local optimistic echo —
- * callers should skip updating Zustand to avoid overwriting local state.
+ * onData receives expenses + hasPendingWrites.
+ * Skip updates when hasPendingWrites === true to avoid stomping local state.
  */
 export function fsSubscribeExpenses(
   onData: (expenses: Expense[], hasPendingWrites: boolean) => void,

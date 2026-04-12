@@ -1,12 +1,10 @@
 /**
  * useFirebaseSync
  *
- * Subscribes to Firestore real-time updates and syncs them into Zustand.
+ * Subscribes to Firestore real-time updates and syncs into Zustand.
  *
- * Key fix: we use `snapshot.metadata.hasPendingWrites` to skip snapshots
- * that are local echoes of our own writes. We only apply remote data when
- * the snapshot comes from the server (hasPendingWrites === false), which
- * prevents the listener from reverting optimistic local updates.
+ * Uses hasPendingWrites to skip local-echo snapshots so optimistic updates
+ * in the store are never overwritten before the server confirms them.
  */
 
 import { useEffect, useState } from 'react'
@@ -29,7 +27,7 @@ export function useFirebaseSync() {
 
     const unsubExpenses = fsSubscribeExpenses(
       (expenses, hasPendingWrites) => {
-        // Skip the local echo — only update Zustand when the server confirms
+        // Skip the local echo — only apply confirmed server data
         if (hasPendingWrites) return
         setExpenses(expenses)
         expensesReady = true

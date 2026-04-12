@@ -13,13 +13,13 @@ import { Wifi, WifiOff, RefreshCw } from 'lucide-react'
 export default function App() {
   const { toggleTheme, setActiveMonth } = useStore()
 
-  // ── Firebase real-time sync ───────────────────────────────────────────────
+  // Start real-time Firebase listener
   const syncState = useFirebaseSync()
 
-  // ── Migration prompt ──────────────────────────────────────────────────────
+  // Check once if we need to offer a localStorage → Firestore migration
   const { shouldShow, checking, localData } = useShouldMigrate()
 
-  // ── Auto month detection ──────────────────────────────────────────────────
+  // Always snap to real current month on mount
   useEffect(() => {
     setActiveMonth(getCurrentMonthStr())
   }, [setActiveMonth])
@@ -45,7 +45,7 @@ export default function App() {
           agregar gasto
         </p>
 
-        {/* Sync status pill */}
+        {/* Firebase sync status pill */}
         <div className="flex items-center gap-1.5">
           {syncState === 'connecting' && (
             <span className="flex items-center gap-1.5 text-xs text-ink-600">
@@ -68,10 +68,10 @@ export default function App() {
         </div>
       </footer>
 
-      {/* Migration prompt — shown once when local data exists & Firestore is empty */}
+      {/* Migration prompt — one-shot, only when local data exists and Firestore is empty */}
       {!checking && shouldShow && localData && (
         <MigrationModal
-          isOpen={shouldShow}
+          isOpen={true}
           onClose={() => window.location.reload()}
           localData={localData}
         />
